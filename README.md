@@ -89,24 +89,35 @@ a read-only root filesystem.
 
 A Helm chart lives under [`chart/`](chart/). It renders the non-secret config
 (host, username, port) into a ConfigMap and reads each switch's password from a
-file mounted out of a Secret you provide — so the password never lands in the
-ConfigMap or in Git.
+file mounted out of a Secret — so the password never lands in the ConfigMap.
 
-Install it from a local checkout (automated OCI publishing is not wired up yet):
+For each switch you supply **exactly one** password source:
+
+- `password` — an inline value. The chart creates a Secret for that switch.
+  Supply it via `--set` or your CI secret store; **never commit a real password**
+  to a values file.
+- `existingSecret` — the name of a Secret you manage (e.g. produced by an
+  `ExternalSecret`). `existingSecretKey` selects the key within it (default
+  `password`).
+
+Switches may mix the two sources. Install from a local checkout (automated OCI
+publishing is not wired up yet):
 
 ```bash
+# Switch with a chart-managed Secret (password supplied at install time):
 helm install tplink ./chart \
-  --set secret.existingSecret=tplink-credentials \
-  --set config.switches[0].host=192.0.2.10 \
-  --set config.switches[0].passwordSecretKey=password
+  --set config.switches[0].host=switch1.example.lan \
+  --set config.switches[0].password="$SWITCH1_PASSWORD"
+
+# Switch referencing an existing Secret:
+helm install tplink ./chart \
+  --set config.switches[0].host=switch1.example.lan \
+  --set config.switches[0].existingSecret=switch1-credentials
 ```
 
-The referenced Secret must hold one key per switch matching each switch's
-`passwordSecretKey` (here, a `password` key). In GitOps setups this Secret is
-typically produced by an `ExternalSecret`. Set `serviceMonitor.enabled=true` if
-you run the Prometheus Operator. See [`chart/values.yaml`](chart/values.yaml)
-for all options. The pod runs non-root (uid `65532`) on a read-only root
-filesystem by default.
+Set `serviceMonitor.enabled=true` if you run the Prometheus Operator. See
+[`chart/values.yaml`](chart/values.yaml) for all options. The pod runs non-root
+(uid `65532`) on a read-only root filesystem by default.
 
 The chart's `appVersion` tracks the exporter image tag and is kept current by
 Renovate.
