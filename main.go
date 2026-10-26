@@ -1,31 +1,72 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/thelastguardian/tplinkexporter/clients"
-	"github.com/thelastguardian/tplinkexporter/collectors"
+	"github.com/swagner-de/tplinkexporter/clients"
+	"github.com/swagner-de/tplinkexporter/collectors"
+	"github.com/swagner-de/tplinkexporter/config"
 )
 
 func main() {
 	var (
-		host     = kingpin.Flag("host", "Host of target tplink easysmart switch.").Required().String()
+		configFile = kingpin.Flag("config",
+			"Path to a YAML config file. When set, credentials are read from the "+
+				"file and --host/--password are not required.").String()
+		host     = kingpin.Flag("host", "Host of target tplink easysmart switch.").String()
 		username = kingpin.Flag("username", "Username for switch GUI login").Default("admin").String()
-		password = kingpin.Flag("password", "Password for switch GUI login").Required().String()
+		password = kingpin.Flag("password", "Password for switch GUI login").String()
 		port     = kingpin.Flag("port", "Metrics port to listen on for prometheus scrapes").Default("9717").Int()
+		timeout  = kingpin.Flag("timeout", "HTTP timeout (seconds) for switch requests").Default("10").Int()
 	)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	tplinkSwitch := clients.NewTPLinkSwitch(*host, *username, *password)
-	trafficCollector := collectors.NewTrafficCollector("tplinkexporter", tplinkSwitch)
+
+	cfg, err := resolveConfig(*configFile, *host, *username, *password, *port, *timeout)
+	if err != nil {
+		log.Fatalf("configuration error: %v", err)
+	}
+
+	timeoutDuration := time.Duration(cfg.TimeoutSeconds) * time.Second
+	switchClients := make([]clients.TPLINKSwitchClient, 0, len(cfg.Switches))
+	for _, sw := range cfg.Switches {
+		switchClients = append(switchClients, clients.NewTPLinkSwitch(sw.Host, sw.Username, sw.Password, timeoutDuration))
+	}
+
+	trafficCollector := collectors.NewTrafficCollector("tplinkexporter", switchClients...)
 	prometheus.MustRegister(trafficCollector)
 	http.Handle("/metrics", promhttp.Handler())
-	log.Printf("Beginning to serve on port :" + strconv.Itoa(*port))
-	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
+
+	addr := ":" + strconv.Itoa(cfg.ListenPort)
+	log.Printf("Beginning to serve on port %s", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
+}
+
+// resolveConfig builds the config from either a config file or the legacy flags.
+func resolveConfig(configFile, host, username, password string, port, timeout int) (*config.Config, error) {
+	if configFile != "" {
+		return config.Load(configFile)
+	}
+
+	if host == "" {
+		return nil, errors.New("either --config or --host must be provided")
+	}
+	if password == "" {
+		return nil, errors.New("--password is required when --config is not set")
+	}
+	return &config.Config{
+		ListenPort:     port,
+		TimeoutSeconds: timeout,
+		Switches: []config.Switch{
+			{Host: host, Username: username, Password: password},
+		},
+	}, nil
 }
