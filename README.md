@@ -4,17 +4,35 @@ Prometheus exporter for TP-Link **Easy Smart** switches (TL-SG108E / TL-SG108PE
 family). These devices have no SNMP, so the exporter scrapes the switch web UI
 and exposes per-port packet counters and link status on `/metrics`.
 
-This is the `github.com/swagner-de/tplinkexporter` fork, hardened for GitOps
-deployment: it adds config-file support (so credentials can be supplied from a
-mounted secret), a cookie-jar HTTP client with timeouts, and a scrape-health
-metric.
+## About this fork
 
-Tested on:
+This project started as a fork of
+[`thelastguardian/tplinkexporter`](https://github.com/thelastguardian/tplinkexporter),
+which appears unmaintained: the last functional change landed in 2022, the only
+later commit was a one-line Dockerfile tweak, and open issues and pull requests
+have sat unanswered. Rather than wait on upstream, this fork carries the project
+forward and has since diverged — it is published under a renamed Go module
+(`github.com/swagner-de/tplinkexporter`) and its own release line, and is no
+longer linked to the original repository.
+
+Changes over upstream:
+
+- Config-file support, so credentials can be mounted from a Secret instead of
+  passed on the command line.
+- Correct session handling: a single HTTP client with a cookie jar, plus request
+  timeouts (upstream relied on a switch firmware quirk, see the CVE note below).
+- A `tplinkexporter_up` scrape-health metric for alerting.
+- Support for scraping multiple switches from one exporter.
+- Modern toolchain, linting, tests, a distroless non-root image, and automated
+  multi-arch releases.
+
+Tested against:
 
 - TL-SG108E v3/v4
 - TL-SG108PE (8-port, 4 PoE)
 
-Should work on other switches in the same family (e.g. TL-SG116E), but untested.
+Other switches in the same Easy Smart family (e.g. TL-SG116E) are expected to
+work but are untested here.
 
 ## Usage
 
@@ -91,16 +109,19 @@ Basic Grafana dashboard using the exporter: https://grafana.com/grafana/dashboar
 ## Metrics exported on `:9717/metrics`
 
 ```
-tplinkexporter_up{host="host"}                               # 1 if the last scrape of the switch succeeded, else 0
-tplinkexporter_portstats_state{portnum="1"-"8",host="host"}
-tplinkexporter_portstats_linkstatus{portnum="1"-"8",host="host"}
-tplinkexporter_portstats_rxgoodpkt{portnum="1"-"8",host="host"}
-tplinkexporter_portstats_rxbadpkt{portnum="1"-"8",host="host"}
-tplinkexporter_portstats_txgoodpkt{portnum="1"-"8",host="host"}
-tplinkexporter_portstats_txbadpkt{portnum="1"-"8",host="host"}
+tplinkexporter_up{host="host"}                    # 1 if the last scrape succeeded, else 0
+tplinkexporter_portstats_state{portnum,host}      # 1 = port enabled
+tplinkexporter_portstats_linkstatus{portnum,host} # link speed/state code reported by the switch
+tplinkexporter_portstats_rxgoodpkt{portnum,host}
+tplinkexporter_portstats_rxbadpkt{portnum,host}
+tplinkexporter_portstats_txgoodpkt{portnum,host}
+tplinkexporter_portstats_txbadpkt{portnum,host}
 ```
 
-Packet counters are only reported for enabled ports (switch `state == 1`).
+`portnum` is 1-based and covers every port the switch reports (an 8-port model
+reports 10 entries, the last two being internal). Packet counters are only
+emitted for enabled ports (`state == 1`); disabled ports expose `state` and
+`linkstatus` only.
 
 ## Development
 
