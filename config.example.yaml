@@ -7,8 +7,12 @@ timeout_seconds: 10    # optional, HTTP timeout per switch request (default 10)
 switches:
   - host: 10.180.103.146
     username: admin      # optional, defaults to "admin"
-    password: "changeme" # supply via a mounted secret in production
+    # Provide the password inline, OR point at a file with password_file
+    # (exactly one of the two). password_file lets the non-secret fields live
+    # in a ConfigMap while the password is mounted separately from a Secret.
+    password: "changeme"       # supply via a mounted secret in production
+    # password_file: /secrets/password
   # Additional switches can be added here; each is labelled by its host.
   # - host: 10.180.103.147
   #   username: admin
-  #   password: "changeme"
+  #   password_file: /secrets/switch2-password

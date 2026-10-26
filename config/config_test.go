@@ -128,3 +128,47 @@ switches:
 		t.Fatal("expected error for missing password, got nil")
 	}
 }
+
+func TestLoadPasswordFile(t *testing.T) {
+	dir := t.TempDir()
+	pwPath := filepath.Join(dir, "pw")
+	if err := os.WriteFile(pwPath, []byte("  filesecret\n"), 0o600); err != nil {
+		t.Fatalf("writing password file: %v", err)
+	}
+	path := writeTempConfig(t, `
+switches:
+  - host: 10.0.0.3
+    password_file: `+pwPath+`
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Switches[0].Password != "filesecret" {
+		t.Errorf("Password = %q, want trimmed 'filesecret'", cfg.Switches[0].Password)
+	}
+}
+
+func TestLoadPasswordAndFileMutuallyExclusive(t *testing.T) {
+	path := writeTempConfig(t, `
+switches:
+  - host: 10.0.0.3
+    password: inline
+    password_file: /some/path
+`)
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected error when both password and password_file are set, got nil")
+	}
+}
+
+func TestLoadPasswordFileMissing(t *testing.T) {
+	path := writeTempConfig(t, `
+switches:
+  - host: 10.0.0.3
+    password_file: /does/not/exist
+`)
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected error for missing password_file, got nil")
+	}
+}
