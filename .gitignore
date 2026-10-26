@@ -1,0 +1,13 @@
+# Binaries and build output
+bin/
+dist/
+
+# Test / coverage output
+cover.out
+*.out
+
+# Local editor / OS cruft
+.DS_Store
+
+# Internal planning docs (not published)
+SPEC.md
