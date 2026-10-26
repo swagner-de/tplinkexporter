@@ -85,14 +85,39 @@ The image is published multi-arch (`linux/amd64,linux/arm64`) at
 `ghcr.io/swagner-de/tplinkexporter`, runs as non-root uid `65532`, and works on
 a read-only root filesystem.
 
-### On Kubernetes with a secret file
+### On Kubernetes with Helm
 
-Mount a secret containing the rendered config at `/config/config.yaml` and run
-the exporter with `--config /config/config.yaml`. This lets you source the
-switch password from a `Secret`/`ExternalSecret` without ever putting it on the
-command line (and therefore in Git). Run the container with
-`runAsNonRoot: true`, `runAsUser: 65532`, `readOnlyRootFilesystem: true`, all
-capabilities dropped, and `seccompProfile: RuntimeDefault`.
+A Helm chart lives under [`chart/`](chart/). It renders the non-secret config
+(host, username, port) into a ConfigMap and reads each switch's password from a
+file mounted out of a Secret you provide — so the password never lands in the
+ConfigMap or in Git.
+
+Install it from a local checkout (automated OCI publishing is not wired up yet):
+
+```bash
+helm install tplink ./chart \
+  --set secret.existingSecret=tplink-credentials \
+  --set config.switches[0].host=10.180.103.146 \
+  --set config.switches[0].passwordSecretKey=password
+```
+
+The referenced Secret must hold one key per switch matching each switch's
+`passwordSecretKey` (here, a `password` key). In GitOps setups this Secret is
+typically produced by an `ExternalSecret`. Set `serviceMonitor.enabled=true` if
+you run the Prometheus Operator. See [`chart/values.yaml`](chart/values.yaml)
+for all options. The pod runs non-root (uid `65532`) on a read-only root
+filesystem by default.
+
+The chart's `appVersion` tracks the exporter image tag and is kept current by
+Renovate.
+
+### On Kubernetes with a raw config secret
+
+Alternatively, mount a Secret containing the full rendered `config.yaml` at
+`/config/config.yaml` and run the exporter with `--config /config/config.yaml`.
+Run the container with `runAsNonRoot: true`, `runAsUser: 65532`,
+`readOnlyRootFilesystem: true`, all capabilities dropped, and
+`seccompProfile: RuntimeDefault`.
 
 ## Security note (CVE-2017-17746)
 
