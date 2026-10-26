@@ -8,21 +8,21 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/thelastguardian/tplinkexporter/clients"
+	"github.com/swagner-de/tplinkexporter/clients"
 )
 
 type TrafficCollector struct {
 	namespace     string
-	client        clients.TPLINKSwitchClient
-	pktMetrics    map[string](*prometheus.GaugeVec)
-	statusMetrics map[string](*prometheus.GaugeVec)
-
-	// trafficScrapesTotalMetric              prometheus.Gauge
-	// trafficScrapeErrorsTotalMetric         prometheus.Gauge
-	// lastTrafficScrapeErrorMetric           prometheus.Gauge
-	// lastTrafficScrapeTimestampMetric       prometheus.Gauge
-	// lastTrafficScrapeDurationSecondsMetric prometheus.Gauge
+	clients       []clients.TPLINKSwitchClient
+	pktMetrics    map[string]*prometheus.GaugeVec
+	statusMetrics map[string]*prometheus.GaugeVec
+	upMetric      *prometheus.GaugeVec
 }
+
+const (
+	hostLabel    = "host"
+	portnumLabel = "portnum"
+)
 
 var statusMetricsFields = []string{
 	"State",
@@ -36,7 +36,7 @@ var pktMetricsFields = []string{
 	"RxBadPkt",
 }
 
-func NewTrafficCollector(namespace string, client clients.TPLINKSwitchClient) *TrafficCollector {
+func NewTrafficCollector(namespace string, switchClients ...clients.TPLINKSwitchClient) *TrafficCollector {
 	pktMetrics := make(map[string]*prometheus.GaugeVec)
 	for _, name := range pktMetricsFields {
 		pktMetrics[name] = prometheus.NewGaugeVec(
@@ -44,9 +44,9 @@ func NewTrafficCollector(namespace string, client clients.TPLINKSwitchClient) *T
 				Namespace: namespace,
 				Subsystem: "portstats",
 				Name:      strings.ToLower(name),
-				Help:      fmt.Sprintf("Value of the '%s' traffic metric from the router", name),
+				Help:      fmt.Sprintf("Value of the '%s' traffic metric from the switch", name),
 			},
-			[]string{"portnum", "host"},
+			[]string{portnumLabel, hostLabel},
 		)
 	}
 	statusMetrics := make(map[string]*prometheus.GaugeVec)
@@ -56,63 +56,64 @@ func NewTrafficCollector(namespace string, client clients.TPLINKSwitchClient) *T
 				Namespace: namespace,
 				Subsystem: "portstats",
 				Name:      strings.ToLower(name),
-				Help:      fmt.Sprintf("Value of the '%s' traffic metric from the router", name),
+				Help:      fmt.Sprintf("Value of the '%s' traffic metric from the switch", name),
 			},
-			[]string{"portnum", "host"},
+			[]string{portnumLabel, hostLabel},
 		)
 	}
+	upMetric := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "up",
+			Help:      "Whether the last scrape of the switch succeeded (1) or failed (0)",
+		},
+		[]string{hostLabel},
+	)
 	return &TrafficCollector{
 		namespace:     namespace,
-		client:        client,
+		clients:       switchClients,
 		pktMetrics:    pktMetrics,
 		statusMetrics: statusMetrics,
-
-		// trafficScrapesTotalMetric:              trafficScrapesTotalMetric,
-		// trafficScrapeErrorsTotalMetric:         trafficScrapeErrorsTotalMetric,
-		// lastTrafficScrapeErrorMetric:           lastTrafficScrapeErrorMetric,
-		// lastTrafficScrapeTimestampMetric:       lastTrafficScrapeTimestampMetric,
-		// lastTrafficScrapeDurationSecondsMetric: lastTrafficScrapeDurationSecondsMetric,
+		upMetric:      upMetric,
 	}
 }
 
 func (c *TrafficCollector) Collect(ch chan<- prometheus.Metric) {
-	// var begun = time.Now()
+	// Reset so stale values from ports/switches that stopped reporting don't linger.
+	for name := range c.pktMetrics {
+		c.pktMetrics[name].Reset()
+	}
+	for name := range c.statusMetrics {
+		c.statusMetrics[name].Reset()
+	}
+	c.upMetric.Reset()
 
-	stats, err := c.client.GetPortStats()
-	if err != nil {
-		log.Println("Error while collecting traffic statistics: %v", err)
-		// c.trafficScrapeErrorsTotalMetric.Inc()
-	} else {
-		for portnum := 0; portnum < len(stats); portnum++ {
+	for _, client := range c.clients {
+		host := client.GetHost()
+		stats, err := client.GetPortStats()
+		if err != nil {
+			log.Printf("Error while collecting traffic statistics for %s: %v\n", host, err)
+			c.upMetric.With(prometheus.Labels{hostLabel: host}).Set(0)
+			continue
+		}
+		c.upMetric.With(prometheus.Labels{hostLabel: host}).Set(1)
+		for portnum := range stats {
+			labels := prometheus.Labels{portnumLabel: strconv.Itoa(portnum + 1), hostLabel: host}
 			for name, value := range stats[portnum].PktCount {
-				// log.Infof("portnum '%d', metricname '%s', metricvalue '%d'", portnum, name, value)
-				c.pktMetrics[name].With(prometheus.Labels{"portnum": strconv.FormatInt(int64(portnum+1), 10), "host": c.client.GetHost()}).Set(float64(value))
+				c.pktMetrics[name].With(labels).Set(float64(value))
 			}
-			// log.Infof("portnum '%d', state '%d', linkstatus '%d'", portnum, stats[portnum].State, stats[portnum].LinkStatus)
-			c.statusMetrics["State"].With(prometheus.Labels{"portnum": strconv.FormatInt(int64(portnum+1), 10), "host": c.client.GetHost()}).Set(float64(stats[portnum].State))
-			c.statusMetrics["LinkStatus"].With(prometheus.Labels{"portnum": strconv.FormatInt(int64(portnum+1), 10), "host": c.client.GetHost()}).Set(float64(stats[portnum].LinkStatus))
-		}
-		for name := range c.pktMetrics {
-			c.pktMetrics[name].Collect(ch)
-		}
-		for name := range c.statusMetrics {
-			c.statusMetrics[name].Collect(ch)
+			c.statusMetrics["State"].With(labels).Set(float64(stats[portnum].State))
+			c.statusMetrics["LinkStatus"].With(labels).Set(float64(stats[portnum].LinkStatus))
 		}
 	}
 
-	// c.trafficScrapeErrorsTotalMetric.Collect(ch)
-
-	// c.trafficScrapesTotalMetric.Inc()
-	// c.trafficScrapesTotalMetric.Collect(ch)
-
-	// c.lastTrafficScrapeErrorMetric.Set(errorMetric)
-	// c.lastTrafficScrapeErrorMetric.Collect(ch)
-
-	// c.lastTrafficScrapeTimestampMetric.Set(float64(time.Now().Unix()))
-	// c.lastTrafficScrapeTimestampMetric.Collect(ch)
-
-	// c.lastTrafficScrapeDurationSecondsMetric.Set(time.Since(begun).Seconds())
-	// c.lastTrafficScrapeDurationSecondsMetric.Collect(ch)
+	for name := range c.pktMetrics {
+		c.pktMetrics[name].Collect(ch)
+	}
+	for name := range c.statusMetrics {
+		c.statusMetrics[name].Collect(ch)
+	}
+	c.upMetric.Collect(ch)
 }
 
 func (c *TrafficCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -122,10 +123,5 @@ func (c *TrafficCollector) Describe(ch chan<- *prometheus.Desc) {
 	for _, name := range statusMetricsFields {
 		c.statusMetrics[name].Describe(ch)
 	}
-
-	// c.trafficScrapesTotalMetric.Describe(ch)
-	// c.trafficScrapeErrorsTotalMetric.Describe(ch)
-	// c.lastTrafficScrapeErrorMetric.Describe(ch)
-	// c.lastTrafficScrapeTimestampMetric.Describe(ch)
-	// c.lastTrafficScrapeDurationSecondsMetric.Describe(ch)
+	c.upMetric.Describe(ch)
 }
