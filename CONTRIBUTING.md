@@ -31,6 +31,17 @@ for example:
 - `fix(deps): ...` / `chore(deps): ...` for dependency bumps
 - `docs: ...`, `ci: ...`, `build: ...`, `chore: ...` for everything else
 
+## Versioning
+
+release-please cuts the exporter release (`vX.Y.Z`) and drives the container
+image from Conventional Commits.
+
+The Helm chart (`chart/`) is versioned manually for now via `version` in
+`chart/Chart.yaml`; it is not yet wired into automated releases. The chart's
+`appVersion` (the exporter image tag it deploys) is kept current by Renovate,
+which watches the published image and opens a PR bumping `appVersion` when a
+newer exporter is released.
+
 ## Pull requests
 
 1. Fork the repository and create a topic branch.
