@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/swagner-de/tplinkexporter/compare/v0.2.0...v0.3.0) (2026-10-26)
+
+
+### Features
+
+* **chart:** add Helm chart for the exporter ([7c3aa65](https://github.com/swagner-de/tplinkexporter/commit/7c3aa65b4f86081b98e1dc9203e443c6953d6418))
+* **config:** support per-switch password_file as an alternative to password ([9fabb86](https://github.com/swagner-de/tplinkexporter/commit/9fabb86eee01c3a4bab14431b9c71783f6ad5387))
+
 ## [0.2.0](https://github.com/swagner-de/tplinkexporter/compare/v0.1.0...v0.2.0) (2026-10-26)
 
 
