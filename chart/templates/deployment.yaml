@@ -52,16 +52,30 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
-            - name: secret
-              mountPath: /secrets
+            {{- range $i, $sw := .Values.config.switches }}
+            - name: {{ printf "secret-%s" (include "tplinkexporter.hostslug" $sw.host) }}
+              mountPath: /secrets/{{ include "tplinkexporter.hostslug" $sw.host }}
               readOnly: true
+            {{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "tplinkexporter.fullname" . }}
-        - name: secret
+        {{- range $i, $sw := .Values.config.switches }}
+        - name: {{ printf "secret-%s" (include "tplinkexporter.hostslug" $sw.host) }}
           secret:
-            secretName: {{ .Values.secret.existingSecret }}
+            {{- if $sw.password }}
+            secretName: {{ printf "%s-%s" (include "tplinkexporter.fullname" $) (include "tplinkexporter.hostslug" $sw.host) | trunc 63 | trimSuffix "-" }}
+            items:
+              - key: password
+                path: password
+            {{- else }}
+            secretName: {{ $sw.existingSecret }}
+            items:
+              - key: {{ default "password" $sw.existingSecretKey }}
+                path: password
+            {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

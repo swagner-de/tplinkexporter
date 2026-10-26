@@ -10,25 +10,25 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Exporter configuration. The non-secret fields are rendered into a ConfigMap
-# and mounted at /config/config.yaml. Each switch's password is read from a file
-# (password_file) that you mount from a Secret via `secret` below, so the
-# password never appears in the ConfigMap or in Git.
+# Exporter configuration. The non-secret fields (host, username, ports) are
+# rendered into a ConfigMap. Each switch's password is read from a file mounted
+# at /secrets/<host-slug>/password, so it never appears in the ConfigMap.
+#
+# Per switch, supply exactly one password source:
+#   password:       inline value; the chart creates a Secret for this switch.
+#                   Supply via --set or CI, never commit a real password.
+#   existingSecret: name of a pre-existing Secret (e.g. from an ExternalSecret);
+#                   existingSecretKey selects the key within it (default
+#                   "password").
 config:
   listenPort: 9717
   timeoutSeconds: 10
   switches:
-    - host: ""
+    - host: switch1.example.lan
       username: admin
-      # Key inside the mounted secret that holds this switch's password.
-      # The file is mounted at /secrets/<passwordSecretKey>.
-      passwordSecretKey: password
-
-# Secret providing the switch password file(s). Reference an existing Secret
-# (recommended, e.g. produced by an ExternalSecret) whose keys match each
-# switch's passwordSecretKey. The secret is mounted read-only at /secrets.
-secret:
-  existingSecret: ""
+      password: ""
+      existingSecret: ""
+      existingSecretKey: password
 
 service:
   type: ClusterIP

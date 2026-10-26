@@ -1,6 +1,3 @@
-{{- if not .Values.secret.existingSecret -}}
-{{- fail "secret.existingSecret is required: provide the name of a Secret holding each switch's password" -}}
-{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,7 +13,13 @@ data:
       {{- if not $sw.host }}
       {{- fail (printf "config.switches[%d].host is required" $i) }}
       {{- end }}
+      {{- if and $sw.password $sw.existingSecret }}
+      {{- fail (printf "config.switches[%d] (%s): set only one of 'password' or 'existingSecret'" $i $sw.host) }}
+      {{- end }}
+      {{- if not (or $sw.password $sw.existingSecret) }}
+      {{- fail (printf "config.switches[%d] (%s): one of 'password' or 'existingSecret' is required" $i $sw.host) }}
+      {{- end }}
       - host: {{ $sw.host | quote }}
         username: {{ default "admin" $sw.username | quote }}
-        password_file: /secrets/{{ required (printf "config.switches[%d].passwordSecretKey is required" $i) $sw.passwordSecretKey }}
+        password_file: /secrets/{{ include "tplinkexporter.hostslug" $sw.host }}/password
     {{- end }}

@@ -2,14 +2,11 @@
 
 The exporter scrapes these switches:
 {{- range .Values.config.switches }}
-  - {{ .host }}
+  - {{ .host }}{{ if .password }} (password from a chart-managed Secret){{ else }} (password from Secret {{ .existingSecret | quote }}){{ end }}
 {{- end }}
 
 Metrics are served on port {{ .Values.service.port }} at /metrics via Service
 {{ include "tplinkexporter.fullname" . }}.
-
-Passwords are read from Secret {{ .Values.secret.existingSecret | quote }}; make
-sure it contains one key per switch matching each switch's passwordSecretKey.
 
 {{- if not .Values.serviceMonitor.enabled }}
 
