@@ -54,3 +54,20 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go build ./...
+
+  chart-lint:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+      - run: helm lint chart/
+      - name: Render templates
+        run: |
+          helm template t chart/ \
+            --set secret.existingSecret=example \
+            --set config.switches[0].host=10.0.0.3 \
+            --set serviceMonitor.enabled=true > /dev/null
