@@ -1,0 +1,18 @@
+{{ include "tplinkexporter.fullname" . }} is installed.
+
+The exporter scrapes these switches:
+{{- range .Values.config.switches }}
+  - {{ .host }}
+{{- end }}
+
+Metrics are served on port {{ .Values.service.port }} at /metrics via Service
+{{ include "tplinkexporter.fullname" . }}.
+
+Passwords are read from Secret {{ .Values.secret.existingSecret | quote }}; make
+sure it contains one key per switch matching each switch's passwordSecretKey.
+
+{{- if not .Values.serviceMonitor.enabled }}
+
+ServiceMonitor is disabled. Set serviceMonitor.enabled=true if you run the
+Prometheus Operator and want automatic scraping.
+{{- end }}

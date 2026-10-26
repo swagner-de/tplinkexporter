@@ -1,0 +1,68 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/swagner-de/tplinkexporter
+  # Defaults to the chart's appVersion when empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Exporter configuration. The non-secret fields are rendered into a ConfigMap
+# and mounted at /config/config.yaml. Each switch's password is read from a file
+# (password_file) that you mount from a Secret via `secret` below, so the
+# password never appears in the ConfigMap or in Git.
+config:
+  listenPort: 9717
+  timeoutSeconds: 10
+  switches:
+    - host: ""
+      username: admin
+      # Key inside the mounted secret that holds this switch's password.
+      # The file is mounted at /secrets/<passwordSecretKey>.
+      passwordSecretKey: password
+
+# Secret providing the switch password file(s). Reference an existing Secret
+# (recommended, e.g. produced by an ExternalSecret) whose keys match each
+# switch's passwordSecretKey. The secret is mounted read-only at /secrets.
+secret:
+  existingSecret: ""
+
+service:
+  type: ClusterIP
+  port: 9717
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  # Extra labels for the ServiceMonitor (e.g. to match your Prometheus selector).
+  labels: {}
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
