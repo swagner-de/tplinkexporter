@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,10 +15,14 @@ const (
 )
 
 // Switch holds the connection details for a single TP-Link Easy Smart switch.
+// Exactly one of Password or PasswordFile must be set, which lets the
+// non-secret fields (host, username) live in a ConfigMap while the password is
+// mounted separately from a Secret.
 type Switch struct {
-	Host     string `yaml:"host"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Host         string `yaml:"host"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	PasswordFile string `yaml:"password_file"`
 }
 
 // Config is the top-level exporter configuration.
@@ -43,7 +48,32 @@ func Load(path string) (*Config, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("invalid config file %q: %w", path, err)
 	}
+	if err := cfg.resolvePasswordFiles(); err != nil {
+		return nil, fmt.Errorf("invalid config file %q: %w", path, err)
+	}
 	return cfg, nil
+}
+
+// resolvePasswordFiles reads each switch's PasswordFile into Password so the
+// rest of the program only needs to read Password. Called after validate, which
+// has already enforced the Password/PasswordFile XOR.
+func (c *Config) resolvePasswordFiles() error {
+	for i := range c.Switches {
+		if c.Switches[i].PasswordFile == "" {
+			continue
+		}
+		data, err := os.ReadFile(c.Switches[i].PasswordFile)
+		if err != nil {
+			return fmt.Errorf("switches[%d] (host %q): reading password_file: %w", i, c.Switches[i].Host, err)
+		}
+		password := strings.TrimSpace(string(data))
+		if password == "" {
+			return fmt.Errorf("switches[%d] (host %q): password_file %q is empty",
+				i, c.Switches[i].Host, c.Switches[i].PasswordFile)
+		}
+		c.Switches[i].Password = password
+	}
+	return nil
 }
 
 func (c *Config) applyDefaults() {
@@ -68,8 +98,11 @@ func (c *Config) validate() error {
 		if sw.Host == "" {
 			return fmt.Errorf("switches[%d]: 'host' is required", i)
 		}
-		if sw.Password == "" {
-			return fmt.Errorf("switches[%d] (host %q): 'password' is required", i, sw.Host)
+		switch {
+		case sw.Password == "" && sw.PasswordFile == "":
+			return fmt.Errorf("switches[%d] (host %q): one of 'password' or 'password_file' is required", i, sw.Host)
+		case sw.Password != "" && sw.PasswordFile != "":
+			return fmt.Errorf("switches[%d] (host %q): 'password' and 'password_file' are mutually exclusive", i, sw.Host)
 		}
 	}
 	if c.TimeoutSeconds < 0 {
