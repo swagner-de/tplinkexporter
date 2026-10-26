@@ -1,0 +1,14 @@
+# Example configuration for tplinkexporter.
+# Point the exporter at this file with: tplinkexporter --config config.yaml
+
+listen_port: 9717      # optional, metrics port (default 9717)
+timeout_seconds: 10    # optional, HTTP timeout per switch request (default 10)
+
+switches:
+  - host: 10.180.103.146
+    username: admin      # optional, defaults to "admin"
+    password: "changeme" # supply via a mounted secret in production
+  # Additional switches can be added here; each is labelled by its host.
+  # - host: 10.180.103.147
+  #   username: admin
+  #   password: "changeme"
