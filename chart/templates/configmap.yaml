@@ -1,0 +1,22 @@
+{{- if not .Values.secret.existingSecret -}}
+{{- fail "secret.existingSecret is required: provide the name of a Secret holding each switch's password" -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tplinkexporter.fullname" . }}
+  labels:
+    {{- include "tplinkexporter.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    listen_port: {{ .Values.config.listenPort }}
+    timeout_seconds: {{ .Values.config.timeoutSeconds }}
+    switches:
+    {{- range $i, $sw := .Values.config.switches }}
+      {{- if not $sw.host }}
+      {{- fail (printf "config.switches[%d].host is required" $i) }}
+      {{- end }}
+      - host: {{ $sw.host | quote }}
+        username: {{ default "admin" $sw.username | quote }}
+        password_file: /secrets/{{ required (printf "config.switches[%d].passwordSecretKey is required" $i) $sw.passwordSecretKey }}
+    {{- end }}
