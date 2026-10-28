@@ -1,7 +1,7 @@
 # tplinkexporter
 
 Chart version: 0.2.0 <!-- x-release-please-version -->
-![AppVersion: 0.4.0](https://img.shields.io/badge/AppVersion-0.4.0-informational?style=flat-square)  ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 Prometheus exporter for TP-Link Easy Smart switches
 **Homepage:** <https://github.com/swagner-de/tplinkexporter>
 
