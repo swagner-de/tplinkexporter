@@ -13,10 +13,17 @@ import (
 	"time"
 )
 
-var allInfoRe = regexp.MustCompile(`all_info = ({[^;]*});`)
+var (
+	allInfoRe    = regexp.MustCompile(`all_info = ({[^;]*});`)
+	infoDsRe     = regexp.MustCompile(`info_ds = ({[^;]*});`)
+	bareKeyRe    = regexp.MustCompile(`([{,]\s*)([A-Za-z_]\w*)(\s*:)`)
+	trailingComa = regexp.MustCompile(`,(\s*[}\]])`)
+)
 
 type TPLINKSwitchClient interface {
 	GetPortStats() ([]portStats, error)
+	GetPortSettings() ([]portSetting, error)
+	GetSystemInfo() (*systemInfo, error)
 	GetHost() string
 }
 
@@ -31,6 +38,22 @@ type portStats struct {
 	State      int
 	LinkStatus int
 	PktCount   map[string]int
+}
+
+type portSetting struct {
+	State             int
+	SpeedConfig       int
+	SpeedActual       int
+	FlowControlConfig int
+	FlowControlActual int
+}
+
+type systemInfo struct {
+	Name     string
+	MAC      string
+	IP       string
+	Firmware string
+	Hardware string
 }
 
 func (client *TPLINKSwitch) GetHost() string {
@@ -52,23 +75,116 @@ func (client *TPLINKSwitch) login() error {
 	return nil
 }
 
-func (client *TPLINKSwitch) GetPortStats() ([]portStats, error) {
+// fetchPage logs in and GETs an Easy Smart web UI page. The switch has a short
+// session table and authorises by source IP (CVE-2017-17746), so re-logging in
+// before each page is the most reliable way to avoid mid-scrape session drops.
+func (client *TPLINKSwitch) fetchPage(page string) ([]byte, error) {
 	if err := client.login(); err != nil {
 		return nil, err
 	}
-
-	resp, err := client.client.Get(fmt.Sprintf("http://%s/PortStatisticsRpm.htm", client.host))
+	resp, err := client.client.Get(fmt.Sprintf("http://%s/%s", client.host, page))
 	if err != nil {
-		return nil, fmt.Errorf("port statistics request failed: %w", err)
+		return nil, fmt.Errorf("request for %s failed: %w", page, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading port statistics response: %w", err)
+		return nil, fmt.Errorf("reading %s response: %w", page, err)
 	}
+	return body, nil
+}
 
+func (client *TPLINKSwitch) GetPortStats() ([]portStats, error) {
+	body, err := client.fetchPage("PortStatisticsRpm.htm")
+	if err != nil {
+		return nil, err
+	}
 	return parsePortStats(body)
+}
+
+func (client *TPLINKSwitch) GetPortSettings() ([]portSetting, error) {
+	body, err := client.fetchPage("PortSettingRpm.htm")
+	if err != nil {
+		return nil, err
+	}
+	return parsePortSettings(body)
+}
+
+func (client *TPLINKSwitch) GetSystemInfo() (*systemInfo, error) {
+	body, err := client.fetchPage("SystemInfoRpm.htm")
+	if err != nil {
+		return nil, err
+	}
+	return parseSystemInfo(body)
+}
+
+// jsObjectToJSON turns an inline JS object literal (bare keys, trailing commas)
+// into valid JSON.
+func jsObjectToJSON(blob string) string {
+	blob = bareKeyRe.ReplaceAllString(blob, `$1"$2"$3`)
+	blob = trailingComa.ReplaceAllString(blob, `$1`)
+	return blob
+}
+
+func parsePortSettings(body []byte) ([]portSetting, error) {
+	res := allInfoRe.FindStringSubmatch(string(body))
+	if res == nil {
+		return nil, errors.New("unexpected response for port settings http call: " + string(body))
+	}
+	type allInfo struct {
+		State  []int `json:"state"`
+		SpdCfg []int `json:"spd_cfg"`
+		SpdAct []int `json:"spd_act"`
+		FcCfg  []int `json:"fc_cfg"`
+		FcAct  []int `json:"fc_act"`
+	}
+	var parsed allInfo
+	if err := json.Unmarshal([]byte(jsObjectToJSON(res[1])), &parsed); err != nil {
+		return nil, fmt.Errorf("parsing port settings payload: %w", err)
+	}
+	settings := make([]portSetting, 0, len(parsed.State))
+	for i := range parsed.State {
+		settings = append(settings, portSetting{
+			State:             parsed.State[i],
+			SpeedConfig:       parsed.SpdCfg[i],
+			SpeedActual:       parsed.SpdAct[i],
+			FlowControlConfig: parsed.FcCfg[i],
+			FlowControlActual: parsed.FcAct[i],
+		})
+	}
+	return settings, nil
+}
+
+// parseSystemInfo reads the info_ds object; each field is a single-element array.
+func parseSystemInfo(body []byte) (*systemInfo, error) {
+	res := infoDsRe.FindStringSubmatch(string(body))
+	if res == nil {
+		return nil, errors.New("unexpected response for system info http call: " + string(body))
+	}
+	type infoDs struct {
+		Descri   []string `json:"descriStr"`
+		MAC      []string `json:"macStr"`
+		IP       []string `json:"ipStr"`
+		Firmware []string `json:"firmwareStr"`
+		Hardware []string `json:"hardwareStr"`
+	}
+	var parsed infoDs
+	if err := json.Unmarshal([]byte(jsObjectToJSON(res[1])), &parsed); err != nil {
+		return nil, fmt.Errorf("parsing system info payload: %w", err)
+	}
+	first := func(s []string) string {
+		if len(s) > 0 {
+			return s[0]
+		}
+		return ""
+	}
+	return &systemInfo{
+		Name:     first(parsed.Descri),
+		MAC:      first(parsed.MAC),
+		IP:       first(parsed.IP),
+		Firmware: first(parsed.Firmware),
+		Hardware: first(parsed.Hardware),
+	}, nil
 }
 
 // parsePortStats extracts per-port statistics from the inline JavaScript

@@ -145,19 +145,31 @@ Basic Grafana dashboard using the exporter: https://grafana.com/grafana/dashboar
 ## Metrics exported on `:9717/metrics`
 
 ```
-tplinkexporter_up{host="host"}                    # 1 if the last scrape succeeded, else 0
-tplinkexporter_portstats_state{portnum,host}      # 1 = port enabled
-tplinkexporter_portstats_linkstatus{portnum,host} # link speed/state code reported by the switch
+tplinkexporter_up{host}                                    # 1 if the last scrape succeeded, else 0
+tplinkexporter_switch_info{host,name,mac,ip,firmware,hardware}  # constant 1; device metadata in labels
+
+tplinkexporter_portstats_state{portnum,host}               # 1 = port enabled
+tplinkexporter_portstats_linkstatus{portnum,host}          # link speed/state code reported by the switch
 tplinkexporter_portstats_rxgoodpkt{portnum,host}
 tplinkexporter_portstats_rxbadpkt{portnum,host}
 tplinkexporter_portstats_txgoodpkt{portnum,host}
 tplinkexporter_portstats_txbadpkt{portnum,host}
+
+tplinkexporter_portstats_speedconfig{portnum,host}         # configured speed/duplex code
+tplinkexporter_portstats_speedactual{portnum,host}         # negotiated speed/duplex code (0 = no link)
+tplinkexporter_portstats_flowcontrolconfig{portnum,host}   # 1 = flow control configured on
+tplinkexporter_portstats_flowcontrolactual{portnum,host}   # 1 = flow control active
 ```
 
 `portnum` is 1-based and covers every port the switch reports (an 8-port model
 reports 10 entries, the last two being internal). Packet counters are only
 emitted for enabled ports (`state == 1`); disabled ports expose `state` and
-`linkstatus` only.
+`linkstatus` only. The `speed*`/`flowcontrol*` and `switch_info` series are
+best-effort — a transient failure to read those pages is logged but does not
+fail the scrape or flip `up`.
+
+The speed code follows the switch's web UI: `0` = no link, `2` = 10M half,
+`3` = 10M full, `4` = 100M half, `5` = 100M full, `6` = 1000M full.
 
 ## Development
 
