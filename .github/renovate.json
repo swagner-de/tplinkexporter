@@ -27,6 +27,11 @@
       "matchManagers": ["gomod"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "go modules"
+    },
+    {
+      "description": "Bump the chart patch version when its appVersion image updates",
+      "matchManagers": ["helmv3"],
+      "bumpVersion": "patch"
     }
   ]
 }

@@ -1,0 +1,40 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  release:
+    permissions:
+      contents: read
+    uses: swagner-de/github-workflows/.github/workflows/release-please.yaml@907827d2f8a3fa4e3e19ccfaaced8a566d5ee891
+    with:
+      chart-path: chart
+    secrets:
+      release-app-client-id: ${{ secrets.RELEASE_BOT_CLIENT_ID }}
+      release-app-private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+  image:
+    needs: release
+    if: needs.release.outputs.app-released == 'true'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: swagner-de/github-workflows/.github/workflows/container-publish.yaml@b36d3219faa2493a567fd13586af9764ac493ab6
+    with:
+      release-sha: ${{ needs.release.outputs.app-sha }}
+      version: ${{ needs.release.outputs.app-version }}
+  chart:
+    needs: release
+    if: needs.release.outputs.chart-released == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: swagner-de/github-workflows/.github/workflows/chart-publish.yaml@347fdca05a9438d302e66a52e2f0ad2b6e1df1ba
+    with:
+      chart-path: chart
+      release-sha: ${{ needs.release.outputs.chart-sha }}
+      version: ${{ needs.release.outputs.chart-version }}
+      image-repository: ghcr.io/swagner-de/tplinkexporter
