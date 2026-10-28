@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/swagner-de/tplinkexporter/compare/v0.4.0...v0.5.0) (2026-10-28)
+
+
+### Features
+
+* collect port speed/flow-control and switch info metrics ([4de5e7d](https://github.com/swagner-de/tplinkexporter/commit/4de5e7ddfe519fdb5cfba6dfc9bf611030f40eac))
+
 ## [0.4.0](https://github.com/swagner-de/tplinkexporter/compare/v0.3.0...v0.4.0) (2026-10-26)
 
 
