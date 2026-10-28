@@ -1,46 +1,56 @@
+# -- Number of exporter replicas. One is sufficient; the exporter is stateless.
 replicaCount: 1
 
 image:
+  # -- Container image repository.
   repository: ghcr.io/swagner-de/tplinkexporter
-  # Defaults to the chart's appVersion when empty.
+  # -- Image tag. Defaults to the chart's appVersion when empty.
   tag: ""
+  # -- Image pull policy.
   pullPolicy: IfNotPresent
 
+# -- Image pull secrets for private registries.
 imagePullSecrets: []
+# -- Override the chart name used in resource names.
 nameOverride: ""
+# -- Override the fully qualified release name.
 fullnameOverride: ""
 
-# Exporter configuration. The non-secret fields (host, username, ports) are
-# rendered into a ConfigMap. Each switch's password is read from a file mounted
-# at /secrets/<host-slug>/password, so it never appears in the ConfigMap.
-#
-# Per switch, supply exactly one password source:
-#   password:       inline value; the chart creates a Secret for this switch.
-#                   Supply via --set or CI, never commit a real password.
-#   existingSecret: name of a pre-existing Secret (e.g. from an ExternalSecret);
-#                   existingSecretKey selects the key within it (default
-#                   "password").
 config:
+  # -- Metrics port the exporter listens on.
   listenPort: 9717
+  # -- HTTP timeout in seconds for each switch request.
   timeoutSeconds: 10
+  # -- Switches to scrape. Each entry needs a host and exactly one password
+  # source: an inline `password` (the chart creates a Secret) or an
+  # `existingSecret` reference (with `existingSecretKey`, default `password`).
+  # Supply inline passwords via --set or CI, never commit real values.
   switches:
     - host: switch1.example.lan
       username: admin
-      password: ""
+      # Placeholder so the chart renders with default values. Override per switch
+      # with a real --set password=... or switch to existingSecret.
+      password: changeme
       existingSecret: ""
       existingSecretKey: password
 
 service:
+  # -- Kubernetes Service type.
   type: ClusterIP
+  # -- Service port exposing /metrics.
   port: 9717
 
 serviceMonitor:
+  # -- Create a Prometheus Operator ServiceMonitor.
   enabled: false
+  # -- Scrape interval.
   interval: 30s
+  # -- Per-scrape timeout.
   scrapeTimeout: 10s
-  # Extra labels for the ServiceMonitor (e.g. to match your Prometheus selector).
+  # -- Extra labels for the ServiceMonitor (e.g. to match a Prometheus selector).
   labels: {}
 
+# -- Container resource requests and limits.
 resources:
   requests:
     cpu: 10m
@@ -48,6 +58,7 @@ resources:
   limits:
     memory: 64Mi
 
+# -- Pod-level security context.
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65532
@@ -55,6 +66,7 @@ podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
+# -- Container-level security context.
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -62,7 +74,11 @@ securityContext:
     drop:
       - ALL
 
+# -- Node selector for pod scheduling.
 nodeSelector: {}
+# -- Tolerations for pod scheduling.
 tolerations: []
+# -- Affinity rules for pod scheduling.
 affinity: {}
+# -- Extra annotations for the pod.
 podAnnotations: {}

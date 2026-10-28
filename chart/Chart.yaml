@@ -4,7 +4,7 @@ description: Prometheus exporter for TP-Link Easy Smart switches
 type: application
 version: 0.1.0
 # renovate: image=ghcr.io/swagner-de/tplinkexporter
-appVersion: "0.2.0"
+appVersion: "0.4.0"
 home: https://github.com/swagner-de/tplinkexporter
 sources:
   - https://github.com/swagner-de/tplinkexporter
@@ -15,3 +15,4 @@ keywords:
   - monitoring
 maintainers:
   - name: swagner-de
+    email: swagner-de@users.noreply.github.com

@@ -1,0 +1,44 @@
+{{ template "chart.header" . }}
+Chart version: {{ template "chart.version" . }} <!-- x-release-please-version -->
+{{ template "chart.appVersionBadge" . }} {{ template "chart.typeBadge" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+
+## Features
+- Scrapes per-port packet counters and link status from TP-Link Easy Smart switches
+- Scrapes multiple switches from one exporter, each labelled by host
+- Exposes a `tplinkexporter_up` scrape-health metric for alerting
+
+## Install
+
+<!-- x-release-please-start-version -->
+```bash
+# Switch with a chart-managed Secret (password supplied at install time):
+helm install tplink oci://ghcr.io/swagner-de/charts/{{ template "chart.name" . }} \
+  --version {{ template "chart.version" . }} \
+  --set config.switches[0].host=switch1.example.lan \
+  --set config.switches[0].password="$SWITCH1_PASSWORD"
+
+# Switch referencing an existing Secret:
+helm install tplink oci://ghcr.io/swagner-de/charts/{{ template "chart.name" . }} \
+  --version {{ template "chart.version" . }} \
+  --set config.switches[0].host=switch1.example.lan \
+  --set config.switches[0].existingSecret=switch1-credentials
+```
+<!-- x-release-please-end -->
+
+Each switch needs exactly one password source: an inline `password` (the chart
+creates a Secret for it) or an `existingSecret` reference. Never commit a real
+inline password to a values file.
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+## Security
+- `runAsNonRoot: true`, UID/GID 65532
+- `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`
+- All capabilities dropped
+- Seccomp profile: `RuntimeDefault`
+
+{{ template "chart.maintainersSection" . }}
