@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/swagner-de/tplinkexporter/compare/v0.5.0...v0.5.1) (2026-10-28)
+
+
+### Fixes
+
+* **deps:** update module github.com/prometheus/client_golang to v1.25.0 ([82092c6](https://github.com/swagner-de/tplinkexporter/commit/82092c6de99bb7700f1046d835c636d5d0c6f0a8))
+
 ## [0.5.0](https://github.com/swagner-de/tplinkexporter/compare/v0.4.0...v0.5.0) (2026-10-28)
 
 
