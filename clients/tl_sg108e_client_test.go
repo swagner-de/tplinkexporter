@@ -50,8 +50,81 @@ func TestParsePortStats(t *testing.T) {
 	}
 }
 
-func TestParsePortStatsUnexpectedBody(t *testing.T) {
-	if _, err := parsePortStats([]byte("<html>login page</html>")); err == nil {
-		t.Fatal("expected error for unexpected body, got nil")
+// Captured from a TL-SG108PE (firmware 1.0.1): ports 1,4,8 up at 1000M (spd 6),
+// ports 2-3,5-7 enabled but no link (spd 0), ports 9-10 disabled.
+var samplePortSettings = `<script>
+var max_port_num = 8;
+var all_info = {
+state:[1,1,1,1,1,1,1,1,0,0],
+trunk_info:[0,0,0,0,0,0,0,0,0,0],
+spd_cfg:[1,1,1,1,1,1,1,1,0,0],
+spd_act:[6,0,0,6,0,0,0,6,0,0],
+fc_cfg:[0,0,0,0,0,0,0,0,0,0],
+fc_act:[0,0,0,0,0,0,0,0,0,0]
+};
+var tip = "";
+</script>`
+
+func TestParsePortSettings(t *testing.T) {
+	settings, err := parsePortSettings([]byte(samplePortSettings))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(settings) != 10 {
+		t.Fatalf("len(settings) = %d, want 10", len(settings))
+	}
+	if settings[0].SpeedConfig != 1 || settings[0].SpeedActual != 6 {
+		t.Errorf("port 1 speed cfg/act = %d/%d, want 1/6", settings[0].SpeedConfig, settings[0].SpeedActual)
+	}
+	if settings[1].SpeedActual != 0 {
+		t.Errorf("port 2 SpeedActual = %d, want 0 (no link)", settings[1].SpeedActual)
+	}
+	if settings[0].FlowControlConfig != 0 || settings[0].FlowControlActual != 0 {
+		t.Errorf("port 1 flow control = %d/%d, want 0/0", settings[0].FlowControlConfig, settings[0].FlowControlActual)
+	}
+}
+
+// Structure matches SystemInfoRpm; values are placeholders, not a real device.
+var sampleSystemInfo = `<script>
+var info_ds = {
+descriStr:["switch1"],
+macStr:["00:00:5E:00:53:01"],
+ipStr:["192.0.2.10"],
+netmaskStr:["255.255.255.0"],
+gatewayStr:["192.0.2.1"],
+firmwareStr:["1.0.1 Build 20191204 Rel.71847"],
+hardwareStr:["TL-SG108PE 2.0"]
+};
+var tip = "";
+</script>`
+
+func TestParseSystemInfo(t *testing.T) {
+	info, err := parseSystemInfo([]byte(sampleSystemInfo))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if info.Name != "switch1" {
+		t.Errorf("Name = %q, want switch1", info.Name)
+	}
+	if info.Firmware != "1.0.1 Build 20191204 Rel.71847" {
+		t.Errorf("Firmware = %q", info.Firmware)
+	}
+	if info.Hardware != "TL-SG108PE 2.0" {
+		t.Errorf("Hardware = %q", info.Hardware)
+	}
+}
+
+// A login redirect (no data blob) must be an error, not silent empty data, for
+// every parser.
+func TestParsersRejectLoginRedirect(t *testing.T) {
+	body := []byte("<html>login page</html>")
+	if _, err := parsePortStats(body); err == nil {
+		t.Error("parsePortStats: expected error, got nil")
+	}
+	if _, err := parsePortSettings(body); err == nil {
+		t.Error("parsePortSettings: expected error, got nil")
+	}
+	if _, err := parseSystemInfo(body); err == nil {
+		t.Error("parseSystemInfo: expected error, got nil")
 	}
 }
