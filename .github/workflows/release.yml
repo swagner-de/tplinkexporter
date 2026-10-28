@@ -8,7 +8,7 @@ jobs:
   release:
     permissions:
       contents: read
-    uses: swagner-de/github-workflows/.github/workflows/release-please.yaml@907827d2f8a3fa4e3e19ccfaaced8a566d5ee891
+    uses: swagner-de/github-workflows/.github/workflows/release-please.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
     with:
       chart-path: chart
     secrets:
@@ -22,7 +22,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: swagner-de/github-workflows/.github/workflows/container-publish.yaml@b36d3219faa2493a567fd13586af9764ac493ab6
+    uses: swagner-de/github-workflows/.github/workflows/container-publish.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
     with:
       release-sha: ${{ needs.release.outputs.app-sha }}
       version: ${{ needs.release.outputs.app-version }}
@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: swagner-de/github-workflows/.github/workflows/chart-publish.yaml@347fdca05a9438d302e66a52e2f0ad2b6e1df1ba
+    uses: swagner-de/github-workflows/.github/workflows/chart-publish.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
     with:
       chart-path: chart
       release-sha: ${{ needs.release.outputs.chart-sha }}

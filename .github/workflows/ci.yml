@@ -38,11 +38,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: swagner-de/github-workflows/.github/workflows/semantic-pr.yaml@b36d3219faa2493a567fd13586af9764ac493ab6
+    uses: swagner-de/github-workflows/.github/workflows/semantic-pr.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
   container:
-    uses: swagner-de/github-workflows/.github/workflows/container-check.yaml@b36d3219faa2493a567fd13586af9764ac493ab6
+    uses: swagner-de/github-workflows/.github/workflows/container-check.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
   chart:
-    uses: swagner-de/github-workflows/.github/workflows/chart-check.yaml@8e365f34e5c3eb99d8144622cdb3ab8397145a18
+    uses: swagner-de/github-workflows/.github/workflows/chart-check.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
     with:
       chart-path: chart
       check-docs: true
