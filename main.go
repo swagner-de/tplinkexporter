@@ -45,6 +45,14 @@ func main() {
 	prometheus.MustRegister(trafficCollector)
 	http.Handle("/metrics", promhttp.Handler())
 
+	// /healthz is a cheap liveness/readiness endpoint that does not scrape the
+	// switches. Probing /metrics triggers a live switch scrape, so a slow or
+	// unreachable switch would fail the probe and get the pod killed.
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
 	addr := ":" + strconv.Itoa(cfg.ListenPort)
 	log.Printf("Beginning to serve on port %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
