@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/swagner-de/tplinkexporter/compare/v0.5.1...v0.6.0) (2026-10-31)
+
+
+### Features
+
+* add /healthz liveness endpoint that does not scrape switches ([6e3df05](https://github.com/swagner-de/tplinkexporter/commit/6e3df054d87fe8fda95420ac358b8c52f7b24633))
+
 ## [0.5.1](https://github.com/swagner-de/tplinkexporter/compare/v0.5.0...v0.5.1) (2026-10-28)
 
 
