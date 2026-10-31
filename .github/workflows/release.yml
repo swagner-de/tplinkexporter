@@ -8,7 +8,7 @@ jobs:
   release:
     permissions:
       contents: read
-    uses: swagner-de/github-workflows/.github/workflows/release-please.yaml@b6e1470b73cd95eaa6ad713b728861814ce353af
+    uses: swagner-de/github-workflows/.github/workflows/release-please.yaml@330a97771f941e01a9ce775cd7d8b01afff6d22d
     with:
       chart-path: chart
     secrets:
