@@ -45,10 +45,12 @@ inline password to a values file.
 | image.repository | string | `"ghcr.io/swagner-de/tplinkexporter"` | Container image repository. |
 | image.tag | string | `""` | Image tag. Defaults to the chart's appVersion when empty. |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries. |
+| livenessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/healthz","port":"metrics"},"initialDelaySeconds":5,"periodSeconds":30,"timeoutSeconds":5}` | Liveness probe. Targets /healthz, which does not scrape the switch, so a slow or unreachable switch never kills the pod. |
 | nameOverride | string | `""` | Override the chart name used in resource names. |
 | nodeSelector | object | `{}` | Node selector for pod scheduling. |
 | podAnnotations | object | `{}` | Extra annotations for the pod. |
 | podSecurityContext | object | `{"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}` | Pod-level security context. |
+| readinessProbe | object | `{"failureThreshold":3,"httpGet":{"path":"/healthz","port":"metrics"},"initialDelaySeconds":5,"periodSeconds":30,"timeoutSeconds":5}` | Readiness probe. Also targets /healthz; switch health is observed via scrape metrics and up, not by failing the pod out of the Service. |
 | replicaCount | int | `1` | Number of exporter replicas. One is sufficient; the exporter is stateless. |
 | resources | object | `{"limits":{"memory":"64Mi"},"requests":{"cpu":"10m","memory":"32Mi"}}` | Container resource requests and limits. |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Container-level security context. |

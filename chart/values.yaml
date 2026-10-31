@@ -50,6 +50,28 @@ serviceMonitor:
   # -- Extra labels for the ServiceMonitor (e.g. to match a Prometheus selector).
   labels: {}
 
+# -- Liveness probe. Targets /healthz, which does not scrape the switch, so a
+# slow or unreachable switch never kills the pod.
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# -- Readiness probe. Also targets /healthz; switch health is observed via
+# scrape metrics and up, not by failing the pod out of the Service.
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 # -- Container resource requests and limits.
 resources:
   requests:
