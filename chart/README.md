@@ -1,6 +1,6 @@
 # tplinkexporter
 
-Chart version: 0.2.1 <!-- x-release-please-version -->
+Chart version: 0.2.2 <!-- x-release-please-version -->
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 Prometheus exporter for TP-Link Easy Smart switches
 **Homepage:** <https://github.com/swagner-de/tplinkexporter>
@@ -16,13 +16,13 @@ Prometheus exporter for TP-Link Easy Smart switches
 ```bash
 # Switch with a chart-managed Secret (password supplied at install time):
 helm install tplink oci://ghcr.io/swagner-de/charts/tplinkexporter \
-  --version 0.2.1 \
+  --version 0.2.2 \
   --set config.switches[0].host=switch1.example.lan \
   --set config.switches[0].password="$SWITCH1_PASSWORD"
 
 # Switch referencing an existing Secret:
 helm install tplink oci://ghcr.io/swagner-de/charts/tplinkexporter \
-  --version 0.2.1 \
+  --version 0.2.2 \
   --set config.switches[0].host=switch1.example.lan \
   --set config.switches[0].existingSecret=switch1-credentials
 ```
