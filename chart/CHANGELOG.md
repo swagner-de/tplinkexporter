@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/swagner-de/tplinkexporter/compare/chart-v0.2.2...chart-v0.2.3) (2026-11-01)
+
+
+### Dependencies
+
+* **deps:** update ghcr.io/swagner-de/tplinkexporter docker tag to v0.6.1 ([#20](https://github.com/swagner-de/tplinkexporter/issues/20)) ([17d8c6e](https://github.com/swagner-de/tplinkexporter/commit/17d8c6e1b2151a1dd4fbafdf3bb507520dd9625d))
+
 ## [0.2.2](https://github.com/swagner-de/tplinkexporter/compare/chart-v0.2.1...chart-v0.2.2) (2026-11-01)
 
 
