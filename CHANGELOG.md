@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/swagner-de/tplinkexporter/compare/v0.6.0...v0.6.1) (2026-11-01)
+
+
+### Fixes
+
+* **ci:** release chore(deps) appVersion bumps ([e8ee68c](https://github.com/swagner-de/tplinkexporter/commit/e8ee68cc862c06cddf5345c24eceb892e35b9bf2))
+
 ## [0.6.0](https://github.com/swagner-de/tplinkexporter/compare/v0.5.1...v0.6.0) (2026-10-31)
 
 
